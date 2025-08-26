@@ -4,6 +4,7 @@ import tiktoken
 from typing import Optional, List, Dict
 from GPT import GPTModel
 from GPTspam import GPTModel as GPTModelSpam
+from logging_utils import log_memory_usage
 
 TORCH_THREADS = int(os.getenv("TORCH_THREADS", "1"))
 MODEL_NAME    = os.getenv("MODEL_NAME", "gpt2")   # base config/checkpoint name
@@ -33,35 +34,43 @@ CHOOSE_MODEL = "gpt2-medium (355M)"
 
 class GPT2Service:
     def __init__(self, task_name):
-        torch.set_num_threads(TORCH_THREADS)
-        self.task_name = task_name
-        if torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        elif torch.backends.mps.is_available():
-            self.device = torch.device("mps")
-        else:
-            self.device = torch.device("cpu")
-            
-        self.tokenizer = tiktoken.get_encoding(MODEL_NAME)
+        logger.debug("Initializing GPT2Service with task_name=%s", task_name)
+        try:
+            torch.set_num_threads(TORCH_THREADS)
+            logger.debug("Set TORCH_THREADS=%s", TORCH_THREADS)
+            self.task_name = task_name
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda")
+            elif torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
 
-        if task_name == "spam":
-            CHOOSE_MODEL = "gpt2-small (124M)"
-            BASE_CONFIG.update(model_configs[CHOOSE_MODEL])
-            num_classes = 2
-            self.model = GPTModelSpam(BASE_CONFIG)
-            self.model.out_head = torch.nn.Linear(in_features=BASE_CONFIG["emb_dim"], out_features=num_classes)
-        else:
-            CHOOSE_MODEL = "gpt2-medium (355M)"
-            BASE_CONFIG.update(model_configs[CHOOSE_MODEL])
-            self.model = GPTModel(BASE_CONFIG)
+            self.tokenizer = tiktoken.get_encoding(MODEL_NAME)
 
-        if task_name == "spam":
-            self.model.load_state_dict(torch.load(os.path.join(os.path.dirname(__file__), "spam_model.pth"),map_location=self.device))
-        else:
-            self.model.load_state_dict(torch.load(os.path.join(os.path.dirname(__file__), CKPT_PATH),map_location=self.device))
+            if task_name == "spam":
+                CHOOSE_MODEL = "gpt2-small (124M)"
+                BASE_CONFIG.update(model_configs[CHOOSE_MODEL])
+                num_classes = 2
+                self.model = GPTModelSpam(BASE_CONFIG)
+                self.model.out_head = torch.nn.Linear(in_features=BASE_CONFIG["emb_dim"], out_features=num_classes)
+            else:
+                CHOOSE_MODEL = "gpt2-medium (355M)"
+                BASE_CONFIG.update(model_configs[CHOOSE_MODEL])
+                self.model = GPTModel(BASE_CONFIG)
 
-        self.model.to(self.device)
-        self.model.eval()
+            if task_name == "spam":
+                self.model.load_state_dict(torch.load(os.path.join(os.path.dirname(__file__), "spam_model.pth"), map_location=self.device))
+            else:
+                self.model.load_state_dict(torch.load(os.path.join(os.path.dirname(__file__), CKPT_PATH), map_location=self.device))
+
+            self.model.to(self.device)
+            self.model.eval()
+            logger.info("Model loaded for task_name=%s", task_name)
+            log_memory_usage(f"model_loaded_{task_name}")
+        except Exception:
+            logger.error("Failed to initialize GPT2Service for task_name=%s", task_name, exc_info=True)
+            raise
 
 
     def generate_text_simple(self, idx, max_new_tokens, context_size, temperature=1.2, top_k=3, eos_id=None):
@@ -186,10 +195,12 @@ _services: Dict[str, GPT2Service] = {}
 
 def get_service(task_name: str) -> GPT2Service:
     logger.debug("Entering get_service with task_name=%s", task_name)
+    log_memory_usage(f"get_service_start_{task_name}")
     try:
         if task_name not in _services:
             logger.info("Creating new GPT2Service for task_name=%s", task_name)
             _services[task_name] = GPT2Service(task_name)
+            log_memory_usage(f"service_created_{task_name}")
             logger.debug("Service created for task_name=%s", task_name)
         else:
             logger.debug("Reusing existing GPT2Service for task_name=%s", task_name)
