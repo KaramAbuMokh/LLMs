@@ -12,7 +12,8 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # copy code and your weights (rename your .pth to model.pth or mount at runtime)
-COPY model.py app.py ./
+# include all Python modules required by the service
+COPY *.py ./
 # COPY model.pth ./model.pth  # uncomment if bundling weights into image
 
 # health & port
