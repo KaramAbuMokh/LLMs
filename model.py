@@ -39,12 +39,8 @@ class GPT2Service:
             torch.set_num_threads(TORCH_THREADS)
             logger.debug("Set TORCH_THREADS=%s", TORCH_THREADS)
             self.task_name = task_name
-            if torch.cuda.is_available():
-                self.device = torch.device("cuda")
-            elif torch.backends.mps.is_available():
-                self.device = torch.device("mps")
-            else:
-                self.device = torch.device("cpu")
+            self.device = torch.device("cpu")
+            logger.debug("Set device to CPU")
 
             self.tokenizer = tiktoken.get_encoding(MODEL_NAME)
 

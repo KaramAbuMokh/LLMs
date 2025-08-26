@@ -5,8 +5,6 @@ Run this after starting the service to verify it's working
 """
 
 import requests
-import json
-import time
 
 BASE_URL = "http://localhost:8080"
 
