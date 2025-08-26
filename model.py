@@ -1,7 +1,7 @@
 # model.py
-import os, torch
+import os, torch, logging
 import tiktoken
-from typing import Optional, List
+from typing import Optional, List, Dict
 from GPT import GPTModel
 from GPTspam import GPTModel as GPTModelSpam
 
@@ -179,13 +179,22 @@ class GPT2Service:
 
 
 
-# singleton (lazy)
-_service: Optional[GPT2Service] = None
-def get_service(task_name):
-    global _service
-    
-    if _service is None or _service.task_name != task_name:
-        _service = GPT2Service(task_name)
-        print("--------------------------------")
-        print("sevice name: ", _service.task_name)
-    return _service 
+# singleton (lazy) per task
+logger = logging.getLogger(__name__)
+_services: Dict[str, GPT2Service] = {}
+
+
+def get_service(task_name: str) -> GPT2Service:
+    logger.debug("Entering get_service with task_name=%s", task_name)
+    try:
+        if task_name not in _services:
+            logger.info("Creating new GPT2Service for task_name=%s", task_name)
+            _services[task_name] = GPT2Service(task_name)
+            logger.debug("Service created for task_name=%s", task_name)
+        else:
+            logger.debug("Reusing existing GPT2Service for task_name=%s", task_name)
+        logger.debug("Returning service for task_name=%s", task_name)
+        return _services[task_name]
+    except Exception as exc:
+        logger.error("Error retrieving service for task_name=%s", task_name, exc_info=True)
+        raise
