@@ -2,6 +2,7 @@
 import os
 import logging
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from model import get_service
 from logging_utils import setup_logging, log_memory_usage
@@ -12,6 +13,25 @@ logger = logging.getLogger(__name__)
 API_KEY = os.getenv("API_KEY")  # optional simple auth
 
 app = FastAPI(title="GPT-2 Next-Word API", version="1.0")
+
+
+def configure_cors(app_instance: FastAPI) -> None:
+    logger.debug("configure_cors called")
+    try:
+        app_instance.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+        logger.debug("CORS middleware configured")
+    except Exception:
+        logger.exception("Failed to configure CORS middleware")
+        raise
+
+
+configure_cors(app)
 
 class GenerateIn(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=2000)
