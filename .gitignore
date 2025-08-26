@@ -1,0 +1,5 @@
+.venv/
+model.pth
+spam_model.pth
+
+*.pyc
