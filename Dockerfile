@@ -9,7 +9,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --upgrade pip \
+ && pip install --no-cache-dir \
+      --extra-index-url https://download.pytorch.org/whl/cpu \
+      -r requirements.txt
 
 # copy code and your weights (rename your .pth to model.pth or mount at runtime)
 # include all Python modules required by the service
