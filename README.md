@@ -132,7 +132,13 @@ The service will automatically detect and load the appropriate format.
 
 ### Logs
 
-The service will output detailed error messages for debugging. Check the console output for any error details.
+The service writes detailed logs, including memory usage, to `logs/app.log`. View them with:
+
+```bash
+tail -f logs/app.log
+```
+
+Adjust verbosity by setting the `LOG_LEVEL` environment variable (e.g., `export LOG_LEVEL=DEBUG`).
 
 ## Production Deployment
 

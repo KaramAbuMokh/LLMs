@@ -1,8 +1,13 @@
 # app.py
 import os
+import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from model import get_service
+from logging_utils import setup_logging, log_memory_usage
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv("API_KEY")  # optional simple auth
 
@@ -22,15 +27,21 @@ class GenerateOut(BaseModel):
 
 @app.get("/health")
 def health():
+    logger.debug("Health check called")
     return {"ok": True}
 
 @app.post("/generate", response_model=GenerateOut)
 def generate(body: GenerateIn, x_api_key: str | None = None):
+    logger.debug("Entered generate with task_name=%s", body.task_name)
     # tiny auth to prevent abuse
     if API_KEY and x_api_key != API_KEY:
+        logger.warning("Unauthorized access attempt")
         raise HTTPException(status_code=401, detail="Unauthorized")
+    log_memory_usage("before_get_service")
     service = get_service(body.task_name)
+    log_memory_usage("after_get_service")
     try:
+        logger.debug("Calling service.generate")
         text = service.generate(
             prompt=body.prompt,
             max_new_tokens=body.max_new_tokens,
@@ -39,6 +50,9 @@ def generate(body: GenerateIn, x_api_key: str | None = None):
             top_k=body.top_k,
             stop=body.stop or None
         )
+        logger.debug("Service.generate completed")
+        log_memory_usage("after_generate")
         return GenerateOut(completion=text)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+    except Exception:
+        logger.exception("Text generation failed")
+        raise HTTPException(status_code=500, detail="Internal server error")
