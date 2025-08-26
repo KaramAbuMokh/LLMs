@@ -78,6 +78,7 @@ curl -X POST "http://localhost:8080/generate" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "The quick brown fox",
+    "task_name": "got",
     "max_new_tokens": 12,
     "temperature": 0.8,
     "top_p": 0.9,
@@ -91,9 +92,18 @@ export API_KEY="your_secret_key"
 
 curl -H "x-api-key: your_secret_key" \
      -H "Content-Type: application/json" \
-     -d '{"prompt":"Hello my name is","max_new_tokens":8}' \
+     -d '{"prompt":"Hello my name is","task_name":"spam","max_new_tokens":8}' \
      http://localhost:8080/generate
 ```
+
+### Task Selection
+
+The `/generate` endpoint supports two tasks controlled by the `task_name` field:
+
+- `spam` &mdash; classify the provided text as spam or not spam
+- `got` &mdash; generate Game of Thrones themed text
+
+Omit `task_name` or use any other value to fall back to the default GPT-2 text generation.
 
 ## Model Requirements
 
@@ -131,4 +141,5 @@ For production use, consider:
 - Setting up proper logging
 - Monitoring with health checks
 - Load balancing for multiple instances
-- Proper security measures beyond simple API keys # LLMs
+- Proper security measures beyond simple API keys
+
