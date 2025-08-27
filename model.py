@@ -68,6 +68,26 @@ class GPT2Service:
             logger.error("Failed to initialize GPT2Service for task_name=%s", task_name, exc_info=True)
             raise
 
+    def cleanup(self):
+        logger.debug("Entering cleanup for task_name=%s", self.task_name)
+        try:
+            if hasattr(self, "model"):
+                logger.debug("Deleting model for task_name=%s", self.task_name)
+                self.model.to("cpu")
+                del self.model
+            if hasattr(self, "tokenizer"):
+                logger.debug("Deleting tokenizer for task_name=%s", self.task_name)
+                del self.tokenizer
+            gc.collect()
+            logger.debug("Garbage collection invoked during cleanup")
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                logger.debug("CUDA cache cleared during cleanup")
+            logger.info("Cleanup complete for task_name=%s", self.task_name)
+        except Exception:
+            logger.error("Error during cleanup for task_name=%s", self.task_name, exc_info=True)
+            raise
+
 
     def generate_text_simple(self, idx, max_new_tokens, context_size, temperature=1.2, top_k=3, eos_id=None):
         '''
@@ -198,6 +218,8 @@ def clear_services() -> None:
             for task in list(_services.keys()):
                 logger.info("Clearing service for task_name=%s", task)
                 service = _services.pop(task)
+                logger.debug("Invoking cleanup for task_name=%s", task)
+                service.cleanup()
                 del service
             gc.collect()
             logger.debug("Garbage collection invoked")
