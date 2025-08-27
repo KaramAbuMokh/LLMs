@@ -61,6 +61,7 @@ KEEP=3
 IMAGES=($(docker images --format '{{.Repository}}:{{.Tag}} {{.CreatedAt}}' | grep "^${APP_NAME}:" | sort -rk2 | awk '{print $1}'))
 for ((i=KEEP; i<${#IMAGES[@]}; i++)); do
   docker image rm -f "${IMAGES[$i]}" || true
+done
 
 
 echo "✅ Deploy complete: ${IMAGE} is live on port 80"
