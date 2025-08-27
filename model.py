@@ -198,7 +198,8 @@ class GPT2Service:
         stop: Optional[List[str]] = None
     ) -> str:
         if self.task_name == "spam":
-            return self.classify_review(prompt)
+            return "sorry, this service is not available due the lack of resources, you still can visit the repo on github and see the fine-tuning process of the model."
+            # return self.classify_review(prompt)
         else:
             return self.generate_and_print_sample("###### question:"+prompt+"\n\n###### Response:")
 
