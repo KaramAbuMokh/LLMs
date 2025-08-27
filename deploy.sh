@@ -48,6 +48,7 @@ docker rm -f "${OLD_NAME}" >/dev/null 2>&1 || true
 docker run -d \
   -p 80:8080 \
   -v /root/model.pth:/app/model.pth \
+  -v /root/spam_model.pth:/app/spam_model.pth \
   -e CKPT_PATH=/app/model.pth \
   --name "${OLD_NAME}" \
   "${IMAGE}"
