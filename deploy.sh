@@ -19,6 +19,7 @@ docker rm -f "${NEW_NAME}" >/dev/null 2>&1 || true
 docker run -d \
   -p ${PORT_NEW}:8080 \
   -v /root/model.pth:/app/model.pth \
+  -v /root/spam_model.pth:/app/spam_model.pth \
   -e CKPT_PATH=/app/model.pth \
   --name "${NEW_NAME}" \
   "${IMAGE}"
@@ -60,6 +61,6 @@ KEEP=3
 IMAGES=($(docker images --format '{{.Repository}}:{{.Tag}} {{.CreatedAt}}' | grep "^${APP_NAME}:" | sort -rk2 | awk '{print $1}'))
 for ((i=KEEP; i<${#IMAGES[@]}; i++)); do
   docker image rm -f "${IMAGES[$i]}" || true
-fi
+
 
 echo "✅ Deploy complete: ${IMAGE} is live on port 80"
