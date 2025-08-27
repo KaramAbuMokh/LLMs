@@ -17,8 +17,8 @@ RUN python -m pip install --upgrade pip \
 # copy code and your weights (rename your .pth to model.pth or mount at runtime)
 # include all Python modules required by the service
 COPY *.py ./
-COPY model.pth ./model.pth  # uncomment if bundling weights into image
-COPY spam_model.pth ./spam_model.pth
+# COPY model.pth ./model.pth  # uncomment if bundling weights into image
+# COPY spam_model.pth ./spam_model.pth
 
 # health & port
 EXPOSE 8080
