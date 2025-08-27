@@ -1,5 +1,5 @@
 # model.py
-import os, torch, logging
+import os, torch, logging, gc
 import tiktoken
 from typing import Optional, List, Dict
 from GPT import GPTModel
@@ -189,11 +189,37 @@ logger = logging.getLogger(__name__)
 _services: Dict[str, GPT2Service] = {}
 
 
+def clear_services() -> None:
+    logger.debug("Entering clear_services")
+    log_memory_usage("clear_services_start")
+    try:
+        if _services:
+            logger.debug("Services to clear: %d", len(_services))
+            for task in list(_services.keys()):
+                logger.info("Clearing service for task_name=%s", task)
+                service = _services.pop(task)
+                del service
+            gc.collect()
+            logger.debug("Garbage collection invoked")
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                logger.debug("CUDA cache cleared")
+            logger.info("All services cleared")
+            log_memory_usage("clear_services_end")
+        else:
+            logger.debug("No services to clear")
+    except Exception:
+        logger.error("Failed to clear services", exc_info=True)
+        raise
+
+
 def get_service(task_name: str) -> GPT2Service:
     logger.debug("Entering get_service with task_name=%s", task_name)
     log_memory_usage(f"get_service_start_{task_name}")
     try:
         if task_name not in _services:
+            logger.info("Clearing existing services before loading task_name=%s", task_name)
+            clear_services()
             logger.info("Creating new GPT2Service for task_name=%s", task_name)
             _services[task_name] = GPT2Service(task_name)
             log_memory_usage(f"service_created_{task_name}")
@@ -202,6 +228,6 @@ def get_service(task_name: str) -> GPT2Service:
             logger.debug("Reusing existing GPT2Service for task_name=%s", task_name)
         logger.debug("Returning service for task_name=%s", task_name)
         return _services[task_name]
-    except Exception as exc:
+    except Exception:
         logger.error("Error retrieving service for task_name=%s", task_name, exc_info=True)
         raise
