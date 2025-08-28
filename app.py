@@ -1,7 +1,7 @@
 # app.py
 import os
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from model import get_service
@@ -12,7 +12,13 @@ logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv("API_KEY")  # optional simple auth
 
-app = FastAPI(title="GPT-2 Next-Word API", version="1.0")
+app = FastAPI(
+    title="GPT-2 Next-Word API",
+    version="1.0",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 
 def configure_cors(app_instance: FastAPI) -> None:
@@ -33,6 +39,22 @@ def configure_cors(app_instance: FastAPI) -> None:
 
 configure_cors(app)
 
+
+@app.middleware("http")
+async def restrict_to_generate_path(request: Request, call_next):
+    logger.debug("restrict_to_generate_path called for %s", request.url.path)
+    try:
+        if request.url.path != "/generate":
+            logger.warning("Blocked request to %s", request.url.path)
+            return Response(status_code=403, content="Forbidden")
+        logger.debug("Path allowed, proceeding to handler")
+        response = await call_next(request)
+        logger.debug("Handler processed request successfully")
+        return response
+    except Exception:
+        logger.exception("Error in restrict_to_generate_path")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 class GenerateIn(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=2000)
     task_name: str = Field(..., description="Task type: 'spam' for classification, 'got' for text generation")
@@ -44,11 +66,6 @@ class GenerateIn(BaseModel):
 
 class GenerateOut(BaseModel):
     completion: str
-
-@app.get("/health")
-def health():
-    logger.debug("Health check called")
-    return {"ok": True}
 
 @app.post("/generate", response_model=GenerateOut)
 def generate(body: GenerateIn, x_api_key: str | None = None):
