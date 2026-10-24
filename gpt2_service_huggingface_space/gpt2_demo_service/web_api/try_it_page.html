@@ -1,0 +1,137 @@
+<!doctype html>
+<!-- Try-it page for the Game of Thrones GPT-2: one question box, example questions, the answer and how long it took -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game of Thrones GPT-2</title>
+<style>
+  :root { --page: #f6f4ef; --card: #ffffff; --text: #1d1b18; --muted: #6b665d; --line: #ddd7cc; --accent: #8a2b1e; --chip: #efe9de; } /* light colours */
+  @media (prefers-color-scheme: dark) { :root { --page: #15130f; --card: #1f1c17; --text: #ece7dd; --muted: #a39c8f; --line: #3a352c; --accent: #e07a5f; --chip: #2a261f; } } /* dark colours */
+  * { box-sizing: border-box; } /* padding stays inside widths */
+  body { margin: 0; background: var(--page); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; } /* page base */
+  main { max-width: 680px; margin: 0 auto; padding: 32px 16px 48px; } /* centred column with phone gutters */
+  h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: -0.01em; } /* title */
+  .subtitle { margin: 0 0 20px; color: var(--muted); } /* one-line explanation */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; } /* white panels */
+  textarea { width: 100%; min-height: 72px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 10px; font: inherit; background: var(--page); color: var(--text); } /* question box */
+  .row { display: flex; gap: 12px; align-items: center; margin-top: 10px; } /* button row */
+  button.ask { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; } /* main button */
+  button.ask:disabled { opacity: 0.55; cursor: wait; } /* busy look */
+  .status { color: var(--muted); font-size: 14px; } /* ready / thinking line */
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; } /* example chips */
+  .examples button { background: var(--chip); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer; } /* one chip */
+  .answer { margin-top: 16px; } /* answer panel spacing */
+  .answer h2 { margin: 0 0 6px; font-size: 14px; color: var(--muted); font-weight: 600; } /* answer label */
+  .answer p { margin: 0; white-space: pre-wrap; } /* answer text keeps line breaks */
+  .sources { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; } /* "From the books" block */
+  .sources h3 { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; } /* its label */
+  .sources ul { margin: 0; padding-left: 18px; } /* one line per source */
+  .sources li { margin: 0 0 6px; } /* spacing between sources */
+  .sources .snippet { color: var(--muted); font-style: italic; } /* the one short book snippet */
+  .note { margin-top: 18px; color: var(--muted); font-size: 13px; } /* footer note */
+</style>
+</head>
+<body>
+<main>
+  <h1>Game of Thrones GPT-2</h1>
+  <p class="subtitle">A GPT-2 medium model I fine-tuned on the five books and thousands of question-answer pairs. Ask it anything about Westeros.</p>
+  <div class="card">
+    <textarea id="question" placeholder="Type a question, e.g. What is the Night's Watch?" maxlength="500"></textarea>
+    <div class="row">
+      <button class="ask" id="ask-button" type="button">Ask</button>
+      <span class="status" id="status">Checking the model…</span>
+    </div>
+    <div class="examples" id="examples"></div>
+  </div>
+  <div class="card answer" id="answer-card" hidden>
+    <h2 id="answer-label">Answer</h2>
+    <p id="answer-text"></p>
+    <div class="sources" id="sources" hidden>
+      <h3>From the books:</h3>
+      <ul id="sources-list"></ul>
+    </div>
+  </div>
+  <p class="note">Answers are sampled, so asking again gives a new one. Before it answers, the service looks for matching passages in the books and shows the book and chapter under the answer. Facts can still be wrong: the model learned the style of the books better than the details.</p>
+</main>
+<script>
+  const EXAMPLE_QUESTIONS = ["What is the Night's Watch?", "Who is the mother of dragons?", "What are the words of House Stark?", "Who is Tyrion Lannister?", "What is the name of Arya Stark's sword?", "Who is Jon Snow's father?"]; // tap-to-ask examples
+  const questionBox = document.getElementById("question"); // the text box
+  const askButton = document.getElementById("ask-button"); // the Ask button
+  const statusLine = document.getElementById("status"); // ready / thinking text
+  const answerCard = document.getElementById("answer-card"); // the answer panel
+  const answerLabel = document.getElementById("answer-label"); // "Answer · 6.2 s"
+  const answerText = document.getElementById("answer-text"); // the answer itself
+  const sourcesBlock = document.getElementById("sources"); // the "From the books" block
+  const sourcesList = document.getElementById("sources-list"); // its list
+
+  async function checkModelReady() { // shows whether the model is loaded
+    try { // network can fail while the Space wakes up
+      const healthReply = await fetch("./health"); // ask the app for its status
+      const health = await healthReply.json(); // read the status JSON
+      statusLine.textContent = health.models && health.models.includes("got") ? "Model ready" : "Model still loading…"; // tell the visitor
+    } catch (problem) { // no answer from the app
+      statusLine.textContent = "Model waking up, try in a minute"; // friendly hint
+    }
+  }
+
+  function showSources(sources) { // lists each source with its book and chapter, and the one snippet when present
+    sourcesList.replaceChildren(); // clear the previous answer's sources
+    for (const source of sources || []) { // every source of this answer
+      const item = document.createElement("li"); // one line
+      const label = source.source_type === "question_answer_pair" ? "Example question" : source.book || "The books"; // what the source is
+      item.textContent = label + (source.chapter ? ", " + source.chapter : ""); // book and chapter (textContent, never HTML)
+      if (source.snippet) { // the snippet is at most 25 words
+        const snippet = document.createElement("div"); // its own line
+        snippet.className = "snippet"; // quieter look
+        snippet.textContent = source.snippet; // plain text
+        item.appendChild(snippet); // under the label
+      }
+      sourcesList.appendChild(item); // add the line
+    }
+    sourcesBlock.hidden = !sourcesList.children.length; // hide the block when the answer had no evidence
+  }
+
+  async function askQuestion(questionText) { // sends one question and shows the answer
+    const question = questionText.trim(); // ignore stray spaces
+    if (!question) { questionBox.focus(); return; } // nothing to ask
+    askButton.disabled = true; // one question at a time
+    statusLine.textContent = "Thinking… (about 5 to 15 seconds)"; // CPU answers take a few seconds
+    const startedAt = performance.now(); // start the clock
+    try { // the call can fail
+      const reply = await fetch("./generate", { // the same endpoint the portfolio uses
+        method: "POST", // a question is sent as JSON
+        headers: { "Content-Type": "application/json" }, // JSON body
+        body: JSON.stringify({ prompt: question, task_name: "got", max_new_tokens: 120 }), // the question for the GoT model
+      });
+      if (reply.status === 503 || reply.status === 429) throw new Error("busy, wait a few seconds"); // line full or asking too fast
+      if (!reply.ok) throw new Error("HTTP " + reply.status); // turn errors into the catch below
+      const result = await reply.json(); // {"completion": "...", "retrieval_used": true, "sources": [...]}
+      const seconds = ((performance.now() - startedAt) / 1000).toFixed(1); // elapsed seconds
+      answerLabel.textContent = question + " · " + seconds + " s"; // label with the question and the time
+      answerText.textContent = result.completion || "(empty answer, try again)"; // the model's answer
+      showSources(result.sources); // book and chapter of the evidence, if any
+      answerCard.hidden = false; // show the panel
+      statusLine.textContent = "Model ready"; // back to idle
+    } catch (problem) { // network or server error
+      statusLine.textContent = "Something went wrong (" + problem.message + "). Try again."; // short error
+    } finally { // always
+      askButton.disabled = false; // allow the next question
+    }
+  }
+
+  for (const exampleQuestion of EXAMPLE_QUESTIONS) { // build the example chips
+    const chip = document.createElement("button"); // one chip
+    chip.type = "button"; // not a form submit
+    chip.textContent = exampleQuestion; // chip label
+    chip.addEventListener("click", () => { questionBox.value = exampleQuestion; askQuestion(exampleQuestion); }); // fill the box and ask
+    document.getElementById("examples").appendChild(chip); // add it to the row
+  }
+  askButton.addEventListener("click", () => askQuestion(questionBox.value)); // Ask button
+  questionBox.addEventListener("keydown", (keyEvent) => { // Enter asks, Shift+Enter adds a line
+    if (keyEvent.key === "Enter" && !keyEvent.shiftKey) { keyEvent.preventDefault(); askQuestion(questionBox.value); } // ask on Enter
+  });
+  checkModelReady(); // show the model status on load
+</script>
+</body>
+</html>

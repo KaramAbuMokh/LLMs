@@ -1,0 +1,82 @@
+[
+  {
+    "question_id": "fg-1",
+    "question": "Who forged the sword called Dawnlight?",
+    "answerable": true,
+    "gold_spans": [
+      {
+        "part_number": 0,
+        "character_start": 193,
+        "character_end": 259
+      }
+    ],
+    "gold_answer": "Mira Vell",
+    "accepted_terms": [
+      "mira"
+    ]
+  },
+  {
+    "question_id": "fg-2",
+    "question": "What animal is on the banner of House Orrin?",
+    "answerable": true,
+    "gold_spans": [
+      {
+        "part_number": 0,
+        "character_start": 260,
+        "character_end": 344
+      }
+    ],
+    "gold_answer": "a grey heron",
+    "accepted_terms": [
+      "heron"
+    ]
+  },
+  {
+    "question_id": "fg-3",
+    "question": "Where are the keys of the salt tower kept?",
+    "answerable": true,
+    "gold_spans": [
+      {
+        "part_number": 1,
+        "character_start": 6,
+        "character_end": 69
+      }
+    ],
+    "gold_answer": "in a cedar box under the salt stairs",
+    "accepted_terms": [
+      "cedar box"
+    ]
+  },
+  {
+    "question_id": "fg-4",
+    "question": "What does Queen Ysolde wear on her head?",
+    "answerable": true,
+    "gold_spans": [
+      {
+        "part_number": 1,
+        "character_start": 274,
+        "character_end": 330
+      }
+    ],
+    "gold_answer": "a crown of sea glass",
+    "accepted_terms": [
+      "sea glass"
+    ]
+  },
+  {
+    "question_id": "fg-5",
+    "question": "How many moons does Jupiter have?",
+    "answerable": false,
+    "gold_spans": [],
+    "gold_answer": "",
+    "accepted_terms": []
+  },
+  {
+    "question_id": "fg-6",
+    "question": "Who is the king of the Iron Mountains?",
+    "answerable": false,
+    "gold_spans": [],
+    "gold_answer": "",
+    "accepted_terms": []
+  }
+]

@@ -1,0 +1,6 @@
+# Offline evaluation tools. Unit tests need only these two (they use fakes and the shared fixture).
+numpy==2.4.4
+pytest==9.1.1
+# Real runs (python -m retrieval_evaluation.run_evaluation_command) also import the Space service code and its packages, so run them in an
+# environment that has the service's requirements installed (torch, tiktoken, onnxruntime, tokenizers, huggingface_hub; see
+# ../gpt2_service_huggingface_space/requirements.txt). Nothing here is shipped to the Space.

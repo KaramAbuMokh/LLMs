@@ -1,0 +1,10 @@
+# experiments — AGENTS.md
+Purpose: the runners and decision rules (DESIGN.md sections 11.3 to 11.6). They take the retriever, answer service and settings as arguments and never import the service at run time.
+
+## Files
+- `retrieval_ablation.py` — builds the search variants (hybrid, dense only, lexical only, two more fusion constants, hybrid with the reranker) as replacements of the shipped settings, measures each on a question set with the ranking metrics and stage times, and lists the questions the reranker fixed or broke.
+- `threshold_calibration.py` — the evidence floor (highest floor keeping 90 percent of development and 70 percent of fact-development questions, rounded down) and the pair-example threshold (leave-one-out on seeded training pairs, the pair itself removed, chosen on one half and reported on the other, rounded up), plus a floor trade-off table (for each development coverage target: the floor and how many fact-development and unanswerable questions get evidence, so a gate that cannot meet the false-alarm limit is visible at once) and the check of pair examples on fact questions.
+- `answer_runs.py` — retrieves once per question, then calls the service's own answer path once per configuration and sample with seeds that are the same under every configuration; builds the answer records with the invented-name and copyright findings.
+- `answer_run_planning.py` — the items, configurations and generation clock of a run, and the halving of the development subset when the projected time passes six hours or the generation count passes 3,000.
+- `settings_recommendation.py` — the decision rules: search mode, reranker, chunk size, layout and budget, the ship gate lines and the rule that says whether a grounding fine-tune is needed.
+- `evaluation_report_writing.py` — turns the stage results into the markdown report (including the statement that held-out answer scores are inflated in both arms and the margin of the test hit rate) and reads and writes the result files.

@@ -1,0 +1,69 @@
+{
+  "builder_source_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "built_at_utc": "2026-10-24T00:00:00Z",
+  "bundle_format_version": 1,
+  "chapter_count": 4,
+  "chunking": {
+    "chunker_version": 0,
+    "indexed_text_version": 1,
+    "max_tokens": 60,
+    "overlap_sentences": 0,
+    "target_tokens": 40
+  },
+  "files": [
+    {
+      "byte_count": 2119,
+      "file_name": "book_passages.jsonl",
+      "sha256": "fb04d6e650c224799b72dac5b9fc98eefc7be0329a39c1b709c08b860640a3f7"
+    },
+    {
+      "byte_count": 6272,
+      "file_name": "book_passage_vectors.npy",
+      "sha256": "3d09708b7c8c0886a3423c34b41914c35e1f5194ea994d6a46c49ad5f8e40c1b"
+    },
+    {
+      "byte_count": 5690,
+      "file_name": "book_passage_lexical_index.npz",
+      "sha256": "6422645516c85149b9a7f45e63a0a374fced0d1a923bab72773af64b0dcc4399"
+    },
+    {
+      "byte_count": 1055,
+      "file_name": "question_answer_pairs.jsonl",
+      "sha256": "d0def5db153910d0879f65084ad8188f839f96a159472dd25a4c7485aa0f0679"
+    },
+    {
+      "byte_count": 4224,
+      "file_name": "question_vectors.npy",
+      "sha256": "82358adf6af6a5f6fd14559b58d5a03c979bbd8c15006ef597d65142075ec185"
+    },
+    {
+      "byte_count": 2662,
+      "file_name": "question_answer_lexical_index.npz",
+      "sha256": "c58e453313259ba918467f66093d4b4af418556ae9259d6107e3c270d4048755"
+    },
+    {
+      "byte_count": 447,
+      "file_name": "chapters.jsonl",
+      "sha256": "7b8362c127bf061069f07f47eb75bda14305d3cb93612db5c68716f587772399"
+    }
+  ],
+  "index_version": "got-retrieval-20261024-eeb6e60a",
+  "lexical": {
+    "length_normalization_b": 0.75,
+    "saturation_k1": 1.2,
+    "tokenizer_version": 1
+  },
+  "pair_count": 4,
+  "passage_count": 6,
+  "source_data_sha256": {
+    "fixture_part_texts.json": "c3642c3e86a55a95dc7ffffa8178abb90c6abb413854438ee3cd98f61cafe5a1"
+  },
+  "text_encoder": {
+    "model_file_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "model_id": "fixture/hashing-text-encoder",
+    "output_dimensions": 256,
+    "passage_query_instruction": "search passages: ",
+    "pooling": "token-hashing",
+    "revision": "fixture-revision-1"
+  }
+}
