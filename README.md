@@ -94,6 +94,7 @@ removes old images (keeping the last three). Step-by-step guides are in `docs/`:
 ├── start.sh            # starts the service locally
 ├── deploy.sh           # build, check, swap and clean up on the server
 ├── requirements.txt    # pinned packages
+├── AGENTS.md           # short notes on what each file is
 └── docs/               # deployment and Docker guides
 ```
 
