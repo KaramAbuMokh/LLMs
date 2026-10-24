@@ -1,151 +1,113 @@
-# GPT-2 Service
+# GPT-2 service: a small API for my two fine-tuned GPT-2 models
 
-A lightweight FastAPI service for GPT-2 text generation with CPU optimization and quantization.
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![DigitalOcean](https://img.shields.io/badge/DigitalOcean-0080FF?logo=digitalocean&logoColor=white)
+![Hugging Face](https://img.shields.io/badge/Hugging_Face-FFD21E?logo=huggingface&logoColor=black)
 
-## Project Structure
+A FastAPI service that puts my two fine-tuned GPT-2 models behind one HTTP endpoint, packaged in Docker and deployed with
+a small script. One model answers questions about *A Song of Ice and Fire* (Game of Thrones), the other classifies a text
+message as spam or not spam. This is the serving side of the project; the training side is in two notebooks.
 
-```
-gpt2_service/
-├─ app.py          # FastAPI application with /generate endpoint
-├─ model.py        # GPT-2 model loading, quantization, and generation
-├─ requirements.txt # Python dependencies
-├─ Dockerfile      # Container configuration
-├─ start.sh        # Local development script
-└─ README.md       # This file
-```
+**Try the models live:** [huggingface.co/spaces/karamAM/gpt2-demos](https://huggingface.co/spaces/karamAM/gpt2-demos).
+That Space is the newer version of this service (same request shape, see "Live demo and this repo" below). I first ran this
+code in Docker on a DigitalOcean droplet; that server is no longer running.
 
-## Features
+## How it works
 
-- **CPU Optimized**: Uses PyTorch CPU builds and dynamic int8 quantization
-- **Lightweight**: Minimal dependencies and small container size
-- **Flexible**: Supports custom model weights (.pth files)
-- **Secure**: Optional API key authentication
-- **Production Ready**: Docker containerization and health checks
+- `POST /generate` takes a prompt and a `task_name`, and returns `{"completion": "..."}`.
+- `task_name: "got"` (or any value other than `spam`) loads the Game of Thrones model, GPT-2 medium (355M), from `model.pth`.
+- `task_name: "spam"` is meant for the spam classifier, GPT-2 small (124M) with a 2-way output layer, from `spam_model.pth`.
+- Only one model is kept in memory at a time: asking for the other task unloads the first, so the service fits a small
+  server.
+- The GPT-2 network (`GPT.py`, `GPTspam.py`) is my own PyTorch code; text is turned into tokens with `tiktoken`.
+- Every request and the memory use around it are logged to `logs/app.log`.
+- Only `/generate` is reachable. Every other path answers 403, and the API docs pages are switched off.
 
-## Quick Start
+## Run it
 
-### 1. Local Development
+The weight files are not in this repository (they are large and git-ignored). Train them with the two notebooks
+([Game of Thrones](https://github.com/KaramAbuMokh/LLM-and-transformer-structure-explained),
+[spam](https://github.com/KaramAbuMokh/fine-tune-GPT2-on-spam-email-classification)) and save each with
+`torch.save(model.state_dict(), ...)`.
 
-```bash
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set your model path
-export CKPT_PATH="path/to/your/model.pth"
-
-# Run the service
-python app.py
-# OR use the start script
-./start.sh
-```
-
-### 2. Docker Deployment
+Locally:
 
 ```bash
-# Build the container
+python -m venv .venv && source .venv/bin/activate
+pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
+cp /path/to/your/model.pth .          # Game of Thrones weights (spam_model.pth goes here too)
+bash start.sh                         # serves on http://localhost:8080
+```
+
+With Docker:
+
+```bash
 docker build -t gpt2-service .
-
-# Run with your model mounted
-docker run -p 8080:8080 -v /path/to/model.pth:/app/model.pth gpt2-service
-
-# Or copy your model into the image (uncomment COPY line in Dockerfile)
+docker run -p 8080:8080 \
+  -v /path/to/model.pth:/app/model.pth \
+  -v /path/to/spam_model.pth:/app/spam_model.pth \
+  gpt2-service
 ```
 
-## Environment Variables
+Ask a question:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CKPT_PATH` | `model.pth` | Path to your trained model weights |
-| `MODEL_NAME` | `gpt2` | Base model configuration name |
-| `TORCH_THREADS` | `1` | Number of CPU threads for PyTorch |
-| `MAX_CTX` | `512` | Maximum context length (keeps it fast) |
-| `API_KEY` | `""` | Optional API key for authentication |
-
-## API Usage
-
-### Health Check
 ```bash
-curl http://localhost:8080/health
-```
-
-### Text Generation
-```bash
-curl -X POST "http://localhost:8080/generate" \
+curl -X POST http://localhost:8080/generate \
   -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "The quick brown fox",
-    "task_name": "got",
-    "max_new_tokens": 12,
-    "temperature": 0.8,
-    "top_p": 0.9,
-    "top_k": 50
-  }'
+  -d '{"prompt": "Who is Jon Snow?", "task_name": "got"}'
 ```
 
-### With API Key Authentication
-```bash
-export API_KEY="your_secret_key"
+Request fields: `prompt` (1 to 2,000 characters), `task_name`, `max_new_tokens` (1 to 64), `temperature` (0.1 to 2.0),
+`top_p`, `top_k` and `stop`.
 
-curl -H "x-api-key: your_secret_key" \
-     -H "Content-Type: application/json" \
-     -d '{"prompt":"Hello my name is","task_name":"spam","max_new_tokens":8}' \
-     http://localhost:8080/generate
+Settings (environment variables):
+
+| Variable | Default | What it does |
+|---|---|---|
+| `CKPT_PATH` | `model.pth` | Game of Thrones weights file |
+| `MODEL_NAME` | `gpt2` | Tokenizer name for `tiktoken` |
+| `TORCH_THREADS` | `1` | CPU threads for PyTorch |
+| `API_KEY` | empty | If set, requests must send it as the `x_api_key` query parameter |
+| `LOG_LEVEL` | `INFO` | How much the service logs |
+
+## Deploy to a server
+
+`deploy.sh` builds a tagged image, starts it on a spare port, waits for it to answer, then swaps it in on port 80 and
+removes old images (keeping the last three). Step-by-step guides are in `docs/`:
+[a fresh DigitalOcean droplet](docs/droplet_deployment.md), [everyday Docker commands](docs/docker_management.md) and
+[updating a running server](docs/updating_main_branch.md).
+
+## Project structure
+
+```
+.
+├── app.py              # FastAPI app: the /generate endpoint, CORS, the "only /generate" rule, optional key
+├── model.py            # loads the right model per task, generates text, keeps one model in memory
+├── GPT.py              # GPT-2 network used for text generation
+├── GPTspam.py          # the same network for the spam classifier
+├── logging_utils.py    # file and console logging, memory usage in the log
+├── test_api.py         # small script that calls a running service
+├── Dockerfile          # python 3.11 slim image, CPU-only PyTorch, runs uvicorn on port 8080
+├── start.sh            # starts the service locally
+├── deploy.sh           # build, check, swap and clean up on the server
+├── requirements.txt    # pinned packages
+├── AGENTS.md           # short notes on what each file is
+└── docs/               # deployment and Docker guides
 ```
 
-### Task Selection
+## Live demo and this repo
 
-The `/generate` endpoint supports two tasks controlled by the `task_name` field:
+The demo Space started from this code and changed a few things on purpose: it builds the exact prompt the model was
+trained on, uses the sampling settings in the request, stops at the end token and returns only the answer, really
+classifies spam, and loads both models together. This repository keeps the original service as I first wrote it, so a few
+behaviours differ from the Space:
 
-- `spam` &mdash; classify the provided text as spam or not spam
-- `got` &mdash; generate Game of Thrones themed text
-
-Omit `task_name` or use any other value to fall back to the default GPT-2 text generation.
-
-## Model Requirements
-
-Your `.pth` file should contain either:
-- A complete model state dict
-- A complete model object
-- A state dict wrapped in a dictionary with a "state_dict" key
-
-The service will automatically detect and load the appropriate format.
-
-## Performance Tips
-
-- **CPU Threads**: Adjust `TORCH_THREADS` based on your CPU cores
-- **Context Length**: Lower `MAX_CTX` for faster inference
-- **Quantization**: Already enabled for optimal CPU performance
-- **Memory**: The service uses dynamic quantization to reduce memory usage
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Model Loading Error**: Ensure your `.pth` file path is correct
-2. **Memory Issues**: Reduce `MAX_CTX` or `TORCH_THREADS`
-3. **Slow Generation**: Check if quantization is working properly
-4. **Port Already in Use**: Change the port in `start.sh` or Dockerfile
-
-### Logs
-
-The service writes detailed logs, including memory usage, to `logs/app.log`. View them with:
-
-```bash
-tail -f logs/app.log
-```
-
-Adjust verbosity by setting the `LOG_LEVEL` environment variable (e.g., `export LOG_LEVEL=DEBUG`).
-
-## Production Deployment
-
-For production use, consider:
-- Using a reverse proxy (nginx)
-- Setting up proper logging
-- Monitoring with health checks
-- Load balancing for multiple instances
-- Proper security measures beyond simple API keys
-
+- The Game of Thrones answer is generated with fixed sampling (temperature 1.2, top-k 3) and 50 new tokens, whatever the
+  request says, and it includes the prompt in the text.
+- The spam task returns a "not available" message here; the `classify_review` code is in `model.py`, commented out of the
+  call.
+- `deploy.sh` and `test_api.py` check a `/health` path, which the "only `/generate`" rule now blocks, so that check needs
+  updating before the deploy script can finish.
